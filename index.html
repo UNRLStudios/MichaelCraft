@@ -901,6 +901,50 @@
       background-repeat: no-repeat !important;
     }
 
+    #buff-hud {
+      position: absolute;
+      top: calc(76px + env(safe-area-inset-top, 0px));
+      left: 12px;
+      display: flex;
+      gap: 4px;
+      pointer-events: none;
+    }
+
+    #buff-hud .buff-icon {
+      width: 28px;
+      height: 28px;
+      position: relative;
+      background-color: rgba(0, 0, 0, 0.45);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      background-size: 22px 22px !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+    }
+
+    #buff-hud .buff-time {
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      bottom: -15px;
+      text-align: center;
+      font-size: 10px;
+      color: #fff;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    #buff-hud .buff-icon.low { animation: buff-blink 0.6s infinite; }
+    @keyframes buff-blink { 50% { opacity: 0.35; } }
+
+    .mc-btn.mini {
+      width: auto;
+      height: 24px;
+      padding: 0 8px;
+      margin: 0 0 0 4px;
+      font-size: 10px;
+    }
+
+    .inv-label-row { display: flex; align-items: center; justify-content: space-between; }
+
     #perk-section {
       margin-bottom: 8px;
     }
@@ -939,13 +983,16 @@
 
     .creative-top {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
       align-items: center;
     }
 
     .creative-tabs {
       display: flex;
+      flex-wrap: wrap;
       gap: 4px;
+      flex: 1 1 100%;
     }
 
     .creative-tabs .mc-btn {
@@ -961,7 +1008,7 @@
     }
 
     #creative-search {
-      flex: 1;
+      flex: 1 1 160px;
       min-width: 80px;
       height: 32px;
       font: inherit;
@@ -988,7 +1035,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, 44px);
       gap: 4px;
-      max-height: 196px;
+      max-height: max(196px, calc(100vh - 560px));   /* (1.0.5) taller on big screens: more items without scrolling */
       overflow-y: auto;
       padding: 4px;
       background: rgba(0, 0, 0, 0.12);
@@ -2171,6 +2218,7 @@
     <div id="net-badge"></div>
     <div id="hud-coords"><span class="sun-moon-dot" id="hud-clock-dot"></span><span id="hud-coords-text"></span></div>
     <div id="perk-hud"></div>
+    <div id="buff-hud"></div>
     <div id="boss-bar"><div class="boss-name">King of the Abyss</div><div class="boss-frame"><div class="boss-fill" id="boss-fill"></div><div class="boss-hp" id="boss-hp"></div></div></div>
     <div id="event-log"></div>
     <input id="chat-input" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Type a command, like /help">
@@ -2223,15 +2271,20 @@
               <button class="mc-btn" data-tab="all">All</button>
               <button class="mc-btn" data-tab="blocks">Blocks</button>
               <button class="mc-btn" data-tab="tools">Tools</button>
+              <button class="mc-btn" data-tab="armor">Armor</button>
+              <button class="mc-btn" data-tab="charms">Charms</button>
+              <button class="mc-btn" data-tab="potions">Potions</button>
               <button class="mc-btn" data-tab="food">Food</button>
               <button class="mc-btn" data-tab="items">Items</button>
             </div>
-            <input id="creative-search" type="text" placeholder="Search..." autocomplete="off" spellcheck="false">
+            <input id="creative-search" type="text" placeholder="Search... (press / )" autocomplete="off" spellcheck="false">
+            <button class="mc-btn mini" id="creative-clear" title="Delete everything you carry">Clear</button>
             <div id="creative-trash" class="slot big" title="Drop an item here to delete it">&#10006;</div>
           </div>
           <div id="creative-grid"></div>
           <div class="craft-hint">Click an item to pick up a stack (right-click: just one, Shift-click: straight to your inventory).
-            Click the grid or the &#10006; while holding something to delete it.</div>
+            Clicking another item swaps what you hold. Drop what you hold on the &#10006; to delete it, or hover a slot and press Delete.
+            Press / to search.</div>
         </div>
         <div id="chest-section" class="inv-grid"></div>
         <div id="trade-section"></div>
@@ -2287,7 +2340,12 @@
           </div>
           <div class="craft-hint furnace-help">Put in a weapon, tool or armor and spend emeralds. Each enchantment goes up to level III.</div>
         </div>
-        <div class="inv-label">Inventory</div>
+        <div class="inv-label inv-label-row"><span>Inventory</span>
+          <span class="inv-tools">
+            <button class="mc-btn mini" id="btn-takeall" title="Move everything from the chest into your inventory">Take All</button>
+            <button class="mc-btn mini" id="btn-quickstack" title="Put everything you carry that the chest already has into it">Quick Stack</button>
+            <button class="mc-btn mini" id="btn-sort" title="Sort and merge your stacks (the chest, when one is open)">Sort</button>
+          </span></div>
         <div id="inventory-grid" class="inv-grid"></div>
         <div id="hotbar-grid" class="inv-grid hotbar-row"></div>
       </div>
@@ -2931,8 +2989,8 @@
     defItem(127, 'Bread', { kind: 'food', hunger: 7 });
     defItem(128, 'Iron Ingot', { kind: 'material' });
     defItem(129, 'Gold Ingot', { kind: 'material' });
-    defItem(130, 'Leather Tunic', { kind: 'armor', defense: 2, stack: 1 });
-    defItem(131, 'Iron Chestplate', { kind: 'armor', defense: 5, stack: 1 });
+    defItem(130, 'Leather Tunic', { kind: 'armor', defense: 3, stack: 1 });
+    defItem(131, 'Iron Chestplate', { kind: 'armor', defense: 6, stack: 1 });
     defItem(132, 'Cooked Meat', { kind: 'food', hunger: 8 });
     defItem(133, 'Bone', { kind: 'material' });       // tames dogs; dropped by husks and brutes
     defItem(134, 'Emerald', { kind: 'material' });    // villager money
@@ -2966,7 +3024,7 @@
     defTool(158, 'Cobalt Sword', 'sword', 6);
     // Cobalt Chestplate: tougher than iron, and made for the water: you hold
     // your breath twice as long and swim faster while you wear it.
-    defItem(159, 'Cobalt Chestplate', { kind: 'armor', defense: 6, stack: 1, aquatic: true });
+    defItem(159, 'Cobalt Chestplate', { kind: 'armor', defense: 8, stack: 1, aquatic: true });
     defItem(160, 'Ink Sac', { kind: 'material' });          // squids drop these; fishermen buy them
     defItem(161, 'Pumpkin Pie', { kind: 'food', hunger: 8 });
     // ---- Alpha 1.1.1 ----
@@ -2990,6 +3048,7 @@
       dash: { item: 206, name: 'Double Jump & Dash', desc: 'Jump again in mid-air; press R (or double-tap a direction in the air) to dash', color: '#e8f0ff' },
       feather: { item: 207, name: 'Slow Falling', desc: 'Drift down gently (hold S to drop). No fall damage', color: '#fff3c4' },
       power: { item: 210, name: 'Power Flight', desc: 'Hold Space in the air to blast upward about 10 blocks', color: '#ffa53a' },
+      wings: { item: 249, name: 'Wings', desc: 'Hold Space in the air to FLY for about 8 seconds (it refills on the ground), then glide down gently. Hold S to drop', color: '#9fe8ff' },
     };
     defItem(202, 'Spring Charm', { kind: 'perk', perk: 'jump', stack: 1 });
     defItem(203, 'Swift Charm', { kind: 'perk', perk: 'speed', stack: 1 });
@@ -2997,9 +3056,23 @@
     defItem(205, 'Heart Charm', { kind: 'perk', perk: 'health', stack: 1 });
     defItem(206, 'Cloud Charm', { kind: 'perk', perk: 'dash', stack: 1 });
     defItem(207, 'Feather Charm', { kind: 'perk', perk: 'feather', stack: 1 });
-    defItem(208, 'Diamond Chestplate', { kind: 'armor', defense: 7, stack: 1 });
-    defItem(209, 'Ruby Chestplate', { kind: 'armor', defense: 8, stack: 1 });
+    defItem(208, 'Diamond Chestplate', { kind: 'armor', defense: 9, stack: 1 });
+    defItem(209, 'Ruby Chestplate', { kind: 'armor', defense: 10, stack: 1 });
     defItem(210, 'Power Charm', { kind: 'perk', perk: 'power', stack: 1 });
+    // (1.0.5) WINGS CHARM: fly for a long while, glide the rest of the way down.
+    const WINGS_CHARM = 249, POTION_DAMAGE = 250, POTION_HEALTH = 251, POTION_MOVE = 252;
+    defItem(WINGS_CHARM, 'Wings Charm', { kind: 'perk', perk: 'wings', stack: 1 });
+    // (1.0.5) POTIONS: drink one (right-click) for a timed boost. You keep the bottle.
+    const POTIONS = {
+      [POTION_DAMAGE]: { buff: 'damage', secs: 240, label: 'Damage Boost', color: '#ff5a3a', desc: '+40% damage with everything for 4 minutes' },
+      [POTION_HEALTH]: { buff: 'health', secs: 300, label: 'Health Boost', color: '#ff6aa8', desc: '+5 hearts for 5 minutes, and heals you 10 health right away' },
+      [POTION_MOVE]: { buff: 'move', secs: 240, label: 'Movement Boost', color: '#35c9f0', desc: '+35% speed and +25% jump height for 4 minutes' },
+    };
+    defItem(POTION_DAMAGE, 'Damage Boost Potion', { kind: 'potion', stack: 16, leaves: 201 });
+    defItem(POTION_HEALTH, 'Health Boost Potion', { kind: 'potion', stack: 16, leaves: 201 });
+    defItem(POTION_MOVE, 'Movement Boost Potion', { kind: 'potion', stack: 16, leaves: 201 });
+    const BUFFS = { damage: { name: 'Damage Boost', color: '#ff5a3a', icon: POTION_DAMAGE }, health: { name: 'Health Boost', color: '#ff6aa8', icon: POTION_HEALTH }, move: { name: 'Movement Boost', color: '#35c9f0', icon: POTION_MOVE } };
+    function hasBuff(p, k) { return !!(p && p.buffs && p.buffs[k] > 0); }
     // BOWS & ARROWS. Hold left-click to draw (you slow down while drawing),
     // let go to shoot where you aim. A full draw fires a critical arrow.
     // Better arrows always hit harder and fly faster, and the best have perks:
@@ -3046,7 +3119,7 @@
     defItem(TONIO_MAP, "Tonio's Map", { kind: 'map', locate: 'tonio', stack: 1 });
     // Samurai Armor: sold by the Senseis. As tough as a Diamond Chestplate, and with a
     // katana in hand you hit harder (+2) and dash more often (25% shorter cooldown).
-    defItem(SAMURAI_ARMOR, 'Samurai Armor', { kind: 'armor', defense: 7, stack: 1, samurai: true });
+    defItem(SAMURAI_ARMOR, 'Samurai Armor', { kind: 'armor', defense: 9, stack: 1, samurai: true });
     defItem(DOJO_MAP, 'Dojo Map', { kind: 'map', locate: 'dojo', stack: 1 });
     defItem(SHOJI_WALL_ITEM, 'Shoji Wall', { kind: 'wall', wall: WALL_SHOJI, from: 13, icon: 'Textures/items/shoji_wall.png' });
     // ---- Beta 1.0.2: GOLD IS USEFUL NOW ----
@@ -3065,13 +3138,13 @@
     for (const id of [GOLD_PICK, GOLD_AXE, GOLD_SHOVEL, GOLD_SWORD]) ITEMS[id].lucky = true;
     defItem(GOLDEN_APPLE, 'Golden Apple', { kind: 'food', hunger: 6, heal: 8, regen: 6, alwaysEat: true });
     // ---- Beta 1.0.4: made from the King of the Abyss's heart ----
-    //   Abyssal Armor      10 defense, +5 damage with everything, +3 hearts. Made from
+    //   Abyssal Armor      12 defense, +7 damage with everything, +4 hearts. Made from
     //                      7 Blocks of Ruby, Samurai Armor and an Abyssal Heart.
     //   Abyssal War Hammer a Sledgehammer that hits for 37. Every 10th swing sends it into
     //                      a RAGE: for 2 seconds it swings every 0.1 s. Made from 5 Blocks
     //                      of Ruby, an Abyssal Heart and a Sledgehammer (where the stick goes).
     const ABYSSAL_ARMOR = 247, WAR_HAMMER = 248, ABYSSAL_HEART = 179;
-    defItem(ABYSSAL_ARMOR, 'Abyssal Armor', { kind: 'armor', defense: 10, stack: 1, bonusDmg: 5, bonusHearts: 3, samuraiLook: true });
+    defItem(ABYSSAL_ARMOR, 'Abyssal Armor', { kind: 'armor', defense: 12, stack: 1, bonusDmg: 7, bonusHearts: 4, samuraiLook: true });
     defWeapon(WAR_HAMMER, 'Abyssal War Hammer', 'hammer', 5, 1600);
     defItem(CHARM_FRAME, 'Gold Charm Frame', { kind: 'material', stack: 16 });
     // How each weapon fights (damage before Sharpness and charms).
@@ -3196,6 +3269,11 @@
       { result: 206, qty: 1, shapeless: [CHARM_FRAME, 201, 201, DIAMOND] },                  // Cloud Charm: a cloud in a bottle
       { result: 207, qty: 1, shapeless: [CHARM_FRAME, 217, 217, STRING] },                   // Feather Charm: a paper parachute
       { result: 210, qty: 1, shapeless: [CHARM_FRAME, FIREFLY_JAR, 88, RUBY] },              // Power Charm: fireflies + a Block of Coal
+      { result: WINGS_CHARM, qty: 1, shapeless: [CHARM_FRAME, 207, 210, DIAMOND] },          // Wings Charm: Feather + Power + a diamond
+      // POTIONS: a Glass Bottle + what gives it its kick
+      { result: POTION_DAMAGE, qty: 2, shapeless: [201, RUBY, 133, 117] },                   // Damage Boost: a ruby, a bone, coal
+      { result: POTION_HEALTH, qty: 2, shapeless: [201, 121, 121, 123] },                    // Health Boost: apples and a glow mushroom
+      { result: POTION_MOVE, qty: 2, shapeless: [201, 124, STRING, COBALT] },                // Movement Boost: leather, string, cobalt
       ...storageRecipes(),
     ];
     // Fill in each recipe's name, total ingredient list and grid size.
@@ -3867,6 +3945,22 @@
       icon(ABYSSAL_ARMOR, g => { g.fillStyle = '#3a0c16'; g.fillRect(3, 3, 10, 11); g.fillStyle = '#8e1b22'; g.fillRect(4, 4, 8, 9); g.fillStyle = '#ffb347'; g.fillRect(7, 8, 2, 2); });
       icon(WAR_HAMMER, g => { g.fillStyle = '#2a1030'; g.fillRect(7, 6, 2, 9); g.fillStyle = '#8e1b22'; g.fillRect(3, 1, 10, 6); g.fillStyle = '#b44bff'; g.fillRect(3, 3, 10, 1); });
       icon(245, g => { g.fillStyle = '#f4c52e'; g.beginPath(); g.arc(8, 9, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff29e'; g.fillRect(5, 6, 2, 2); g.fillStyle = '#4a8a2a'; g.fillRect(8, 2, 2, 3); });
+      icon(WINGS_CHARM, g => {
+        g.fillStyle = '#e8c33d'; g.fillRect(6, 1, 4, 2); g.fillRect(6, 2, 1, 3); g.fillRect(9, 2, 1, 3);
+        g.fillStyle = '#e9f6ff'; g.beginPath(); g.moveTo(7, 8); g.lineTo(0, 3); g.lineTo(1, 8); g.lineTo(3, 11); g.lineTo(7, 13); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(9, 8); g.lineTo(16, 3); g.lineTo(15, 8); g.lineTo(13, 11); g.lineTo(9, 13); g.closePath(); g.fill();
+        g.fillStyle = '#8fc6ee'; g.fillRect(2, 7, 4, 1); g.fillRect(10, 7, 4, 1); g.fillRect(3, 9, 3, 1); g.fillRect(10, 9, 3, 1);
+        g.fillStyle = '#e8c33d'; g.fillRect(7, 5, 2, 9);
+      });
+      const potionIcon = (liquid, hi) => g => {
+        g.fillStyle = '#8b5a2b'; g.fillRect(6, 1, 4, 2);
+        g.fillStyle = 'rgba(214,232,242,0.95)'; g.fillRect(6, 3, 4, 3); g.beginPath(); g.ellipse(8, 10, 5, 5, 0, 0, 7); g.fill();
+        g.fillStyle = liquid; g.beginPath(); g.ellipse(8, 11, 4, 4, 0, 0, 7); g.fill(); g.fillRect(7, 7, 2, 2);
+        g.fillStyle = hi; g.fillRect(5, 9, 2, 3); g.fillRect(7, 4, 1, 2);
+      };
+      icon(POTION_DAMAGE, potionIcon('#d9332a', '#ff9a8a'));
+      icon(POTION_HEALTH, potionIcon('#ff5fa0', '#ffc2dc'));
+      icon(POTION_MOVE, potionIcon('#2fc2ee', '#b8f0ff'));
       icon(246, g => { g.fillStyle = '#e8c33d'; g.fillRect(5, 5, 6, 8); g.fillStyle = '#2a1a0c'; g.fillRect(6, 6, 4, 6); g.fillStyle = '#6b4a2a'; g.fillRect(7, 1, 2, 4); });
       icon(129, g => { g.fillStyle = '#e8c33d'; g.beginPath(); g.moveTo(3, 10); g.lineTo(5, 5); g.lineTo(11, 5); g.lineTo(13, 10); g.lineTo(11, 12); g.lineTo(5, 12); g.closePath(); g.fill(); g.fillStyle = '#fff29e'; g.fillRect(5, 7, 6, 2); });
       icon(130, g => { g.fillStyle = '#c9a06a'; g.fillRect(4, 2, 8, 4); g.fillRect(3, 6, 10, 7); g.fillStyle = '#8f6a3d'; g.fillRect(3, 6, 10, 2); });
@@ -6629,6 +6723,7 @@
         this.craftGrid = new Array(9).fill(null);  // 3x3 at a crafting table; the 2x2 inventory grid uses cells 0,1,3,4
         this.armorSlot = null;                     // { item, qty:1 } — one equipped armor piece
         this.perks = [null, null, null];           // up to 3 perk charms (see PERKS)
+        this.buffs = {};                           // (1.0.5) potion effects: { damage|health|move: seconds left }
         this.dead = false;
         this.attackCooldown = 0;
         this.onFallDamage = (dmg) => { if (Game.creative || !gameRule('fallDamage')) return; sfx(dmg > 4 ? 'fall.big' : 'fall.small'); this.damage(dmg); };
@@ -6639,7 +6734,8 @@
         if (this.invuln > 0 || this.dead || Game.creative) return;
         this.lastCause = cause || null;
         const armorDef = this.armorSlot && itemDef(this.armorSlot.item);
-        const reduced = armorDef && cause !== 'drown' ? Math.max(1, amount - armorDef.defense - enchLevel(this.armorSlot, 'prot')) : amount;   // armor can't stop drowning
+        let reduced = armorDef && cause !== 'drown' ? Math.max(1, amount - armorDef.defense - enchLevel(this.armorSlot, 'prot')) : amount;   // armor can't stop drowning
+        if (cause === 'boss' && armorDef) reduced = Math.max(reduced, Math.ceil(amount * 0.25));   // (1.0.5) the strongest armor still can't shrug off the King entirely
         this.health -= reduced;
         spawnDamageNumber(this.x + this.w / 2, this.y, reduced, 'player');
         this.invuln = 0.5;
@@ -7252,6 +7348,10 @@
           selectHotbar(parseInt(e.code.slice(5), 10) - 1);
         }
         if (e.code >= 'Digit1' && e.code <= 'Digit9' && Game.screen === 'inventory' && !Drag.active) hotkeySwap(parseInt(e.code.slice(5), 10) - 1);
+        if (Game.screen === 'inventory' && Game.creative && Game.ui.mode === 'inventory') {   // (1.0.5) creative: Delete wipes the slot you hover, / jumps to the search box
+          if (e.code === 'Delete' && Hover && !(Hover.rules && Hover.rules.takeOnly) && Hover.container[Hover.index]) { Hover.container[Hover.index] = null; refreshInventoryUI(); }
+          if (e.key === '/' && !e.repeat) { e.preventDefault(); el('creative-search').focus(); }
+        }
         if (e.code === Settings.keys.drop && !e.repeat) {
           const all = e.ctrlKey || e.metaKey;
           if (Game.screen === 'play' && Game.player && !Game.player.dead) dropFrom(Game.player.inventory, Game.player.hotbarIndex, all);
@@ -7786,6 +7886,7 @@
       }
       if (!isRepeat && def && WEAPONS[slot.item]) { weaponRightClick(p, slot, WEAPONS[slot.item]); return; }   // dash / pound / reload
       if (!isRepeat && def && def.kind === 'food') { eatSelected(); return; }
+      if (!isRepeat && def && def.kind === 'potion') { drinkPotion(); return; }
       if (!isRepeat && def && def.kind === 'armor') { equipArmor(); return; }
       if (!isRepeat && def && def.kind === 'perk') { equipPerk(); return; }
       if (!isRepeat && def && def.kind === 'bucket') { if (t) useBucket(slot, t.x, t.y, targetId); return; }
@@ -8006,6 +8107,10 @@
       Adv.grant('sleep');
     }
     // Equip whichever armor piece is selected on the hotbar into the armor slot.
+    function armorEquipFX(item) {
+      sfx(item === 208 || item === 209 || item === ABYSSAL_ARMOR ? 'equip.diamond' : item === 131 || item === 159 || item === SAMURAI_ARMOR ? 'equip.iron' : 'equip.leather');
+      Adv.grant('suitup');
+    }
     function equipArmor() {
       const p = Game.player;
       const slot = p.selectedSlot();
@@ -8044,6 +8149,23 @@
       sfx('eat'); setTimeout(() => sfx('eat'), 160); setTimeout(() => sfx('burp'), 420);
     }
 
+    // (1.0.5) Drink the potion in your hand: a timed boost (drink another to refresh it)
+    function drinkPotion() {
+      const p = Game.player, slot = p.selectedSlot(), def = slot && itemDef(slot.item), P = def && POTIONS[slot.item];
+      if (!def || !P) return;
+      p.buffs = p.buffs || {};
+      p.buffs[P.buff] = P.secs;
+      if (P.buff === 'health') { updateBonusHearts(p); p.heal(10); }
+      for (let i = 0; i < 16; i++) Game.particles.push({ x: p.x + Math.random() * p.w, y: p.y + Math.random() * p.h, vx: (Math.random() - 0.5) * 1.6, vy: -1.5 - Math.random(), life: 0.9, age: 0, size: 0.09, kind: 'star', color: i % 2 ? P.color : '#ffffff', gravity: -0.5 });
+      startAction(p, 'eat');
+      sfx('drink'); showToast(`${P.label}! ${P.desc}`);
+      if (!Game.creative) {
+        slot.qty -= 1;
+        if (slot.qty <= 0) p.inventory[p.hotbarIndex] = null;
+        if (def.leaves) { if (!p.inventory[p.hotbarIndex]) p.inventory[p.hotbarIndex] = makeStack(def.leaves, 1); else giveOrDrop(makeStack(def.leaves, 1)); }
+      }
+    }
+
     function mobSoundPrefix(mob) { return mob.type === 'grazer' ? 'boar' : mob.type; }
     // Damage a mob. attacker is the player or another mob (e.g. a dog).
     // kind (1.0.3): 'melee' (swords, katana, fists...), 'hammer', 'ranged' (bow, musket)
@@ -8058,6 +8180,7 @@
         dmg = taken;
         const floor = bossDespFloor(mob);   // (1.0.4) no hit can skip his Desperation
         if (floor && mob.health - dmg < floor) { dmg = Math.max(0, mob.health - floor); mob.despPending = true; }
+        bossAddThreat(mob, attacker, dmg);   // (1.0.5) who is hurting him most
       }
       if (mob.def.npc) { npcHurt(mob, dmg, attacker, crit); return; }   // Tonio and the Senseis
       if (mob.bossInvuln > 0) {   // the King shrugs it off
@@ -8130,6 +8253,7 @@
       dx = Math.cos(ang); dy = Math.sin(ang);
       let dmg = (A.dmg + enchLevel(bow, 'sharp')) * (0.35 + 0.65 * f);
       if (hasPerk(p, 'damage')) dmg *= 1.25;
+      if (hasBuff(p, 'damage')) dmg *= 1.4;   // Damage Boost Potion
       if (full) dmg *= 1.25;
       dmg += armorBonusDamage(p);   // (1.0.4: Abyssal Armor)
       const ox = p.x + p.w / 2, oy = p.y + 0.55;
@@ -8236,6 +8360,12 @@
         }
         ctx.globalAlpha = 1;
       }
+      // Wings Charm flight gauge over your head
+      if (hasPerk(p, 'wings') && !p.onGround && (p.wingFuel != null ? p.wingFuel : WINGS_FUEL) < WINGS_FUEL) {
+        const w = TILE * 0.9, x = originX + (p.x + p.w / 2) * TILE - w / 2, y = originY + p.y * TILE - TILE * 0.4;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 1, y - 1, w + 2, 5);
+        ctx.fillStyle = p.wingFuel < 1.5 ? '#ff6a5a' : '#9fe8ff'; ctx.fillRect(x, y, w * Math.max(0, p.wingFuel / WINGS_FUEL), 3);
+      }
       // Power Charm fuel gauge over your head
       if (hasPerk(p, 'power') && !p.onGround && p.powerFuel < POWER_FUEL) {
         const w = TILE * 0.9, x = originX + (p.x + p.w / 2) * TILE - w / 2, y = originY + p.y * TILE - TILE * 0.4;
@@ -8248,7 +8378,7 @@
       const dx = Math.max(e.x - x, 0, x - (e.x + e.w)), dy = Math.max(e.y - y, 0, y - (e.y + e.h));
       return Math.hypot(dx, dy);
     }
-    // (1.0.4) armor that adds damage to everything you do (Abyssal Armor: +5)
+    // (1.0.4) armor that adds damage to everything you do (Abyssal Armor: +7)
     function armorBonusDamage(p) { const d = p && p.armorSlot && itemDef(p.armorSlot.item); return (d && d.bonusDmg) || 0; }
     function armorBonusHearts(p) { const d = p && p.armorSlot && itemDef(p.armorSlot.item); return (d && d.bonusHearts) || 0; }
     function meleeDamage(p, slot, tool) {
@@ -8256,6 +8386,7 @@
       if (tool.type === 'sword') dmg += 1;
       dmg += enchLevel(slot, 'sharp');                              // Sharpness
       if (hasPerk(p, 'damage')) dmg = Math.max(dmg + 1, Math.ceil(dmg * 1.25));   // Warrior Charm
+      if (hasBuff(p, 'damage')) dmg = Math.max(dmg + 1, Math.ceil(dmg * 1.4));   // Damage Boost Potion
       return dmg;
     }
     // One swing of whatever you're holding. It always hits the mob you
@@ -8888,15 +9019,35 @@
     }
     // Players at the fight (near the boss's home), creative or not.
     function bossFighters(m) { return bossPlayers().filter(q => bossNear(m, q)); }
-    // Who the boss is after: the nearest fighter, re-picked every few seconds.
+    // Who the boss is after (1.0.5): with several players he takes TURNS, a different one
+    // for each new attack, so it isn't always whoever summoned him. The exception is a
+    // clear damage leader: someone doing a lot more damage than everyone else (over the
+    // last few seconds) keeps his attention.
+    const bossKey = (q) => q && q.isRemote ? q.id : 'host';
+    function bossAddThreat(m, attacker, dmg) {
+      if (!attacker || !(dmg > 0) || !(attacker === Game.player || attacker.isRemote)) return;
+      const k = bossKey(attacker);
+      m.threat = m.threat || {}; m.threat[k] = (m.threat[k] || 0) + dmg;
+    }
     function bossTarget(m, dt) {
       const list = bossFighters(m);
+      if (m.threat) for (const k in m.threat) m.threat[k] *= Math.pow(0.5, dt / 6);   // (damage is remembered for ~6 s)
       m.retarget = (m.retarget || 0) - dt;
       let cur = m.targetRef && list.includes(m.targetRef) ? m.targetRef : null;
       if (!cur || m.retarget <= 0) {
-        let best = null, bd = Infinity;
-        for (const q of list) { const d = Math.hypot(q.x - m.x, q.y - m.y) + (q === cur ? -4 : 0); if (d < bd) { bd = d; best = q; } }
-        cur = best; m.retarget = 4 + Math.random() * 3;
+        if (list.length <= 1) cur = list[0] || null;
+        else {
+          const th = (q) => (m.threat && m.threat[bossKey(q)]) || 0;
+          const byThreat = list.slice().sort((a, b) => th(b) - th(a));
+          if (th(byThreat[0]) >= 60 && th(byThreat[0]) >= 2 * th(byThreat[1])) cur = byThreat[0];   // a clear damage leader
+          else {   // take turns
+            const order = list.slice().sort((a, b) => String(bossKey(a)).localeCompare(String(bossKey(b))));
+            const at = order.findIndex(q => bossKey(q) === m.lastTargetKey);
+            cur = order[(at + 1) % order.length];
+          }
+        }
+        if (cur) m.lastTargetKey = bossKey(cur);
+        m.retarget = 99;   // (until the next attack picks again, or this player is gone)
       }
       m.targetRef = cur;
       return cur || Game.player;
@@ -9045,8 +9196,8 @@
     //
     // Tuning: BOSSES > abyssking > desperation, DESP_DMG, DESP_ACTS and each card's
     // pace(slow, fast) numbers in kingDesperation (slow = start of the fight).
-    // Damage (armour takes a FLAT amount off, Abyssal Armor: 10), after the King's x1.6:
-    // orb 14, Gigablast 19, beam 21.
+    // Damage (armour takes a FLAT amount off, Abyssal Armor: 12, but never more than 75% of
+    // the King's hits), after the King's x1.6: orb 14, Gigablast 19, beam 21.
     // ---------------------------------------------------------------------------
     const DESP_DMG = { orb: 9, beam: 13, blast: 12 };
     const DESP_POOL = ['wave', 'comb', 'lance', 'giga', 'spiral', 'fan', 'rain', 'seekers'];
@@ -9379,6 +9530,7 @@
       let r = Math.random() * pool.reduce((s, o) => s + o[1], 0), pick = pool[0][0];
       for (const o of pool) { r -= o[1]; if (r <= 0) { pick = o[0]; break; } }
       m.lastMove = pick; m.side = -m.side; m.rnd = Math.random() * 0.6;
+      m.retarget = 0;   // (1.0.5) every new attack may go after a different player
       setBossMove(m, pick);
     }
     function bossSteer(m, tx, ty, maxSp, dt) {
@@ -10699,6 +10851,7 @@
           { cost: [[134, 12], [128, 2]], result: [113, 1], max: 2 },
           { cost: [[134, 18]], result: [204, 1], max: 1 },      // Warrior Charm (damage boost)
           { cost: [[134, 22]], result: [210, 1], max: 1 },      // Power Charm (power flight)
+          { cost: [[134, 34]], result: [WINGS_CHARM, 1], max: 1 },   // (1.0.5) Wings Charm
           { cost: [[134, 4], [128, 1]], result: [211, 1], max: 3 },   // a bow
           { cost: [[134, 1]], result: [212, 16], max: 12 }]     // arrows
       },
@@ -11025,6 +11178,7 @@
     function updatePlayerVitals(p, dt) {
       p.invuln = Math.max(0, p.invuln - dt);
       p.attackCooldown = Math.max(0, p.attackCooldown - dt);
+      if (p.buffs) for (const k in p.buffs) if (p.buffs[k] > 0) { p.buffs[k] -= dt; if (p.buffs[k] <= 0) { delete p.buffs[k]; showToast(`${BUFFS[k].name} wore off`); } }
       if (Game.creative) { p.health = p.maxHealth; p.hunger = p.maxHunger; p.hungerTimer = 0; p.damageTimer = 0; p.air = p.maxAir; }
       // LAVA & FIRE: lava hurts fast and sets you alight; burning keeps
       // hurting for a few seconds after you get out (water puts it out)
@@ -13222,6 +13376,7 @@
       const hotSig = p.hotbarIndex + '|' + p.inventory.slice(0, 9).map(s => s ? `${s.item}:${s.qty}:${s.durability || ''}:${s.ench ? 1 : ''}` : '-').join(',');
       if (hotSig !== renderHUD.hotSig) { renderHUD.hotSig = hotSig; renderHotbar(); }
       renderPerkHud();
+      renderBuffHud();
       {
         const s = p.selectedSlot(), d = s && itemDef(s.item), ah = el('ammo-hud');
         let txt = '';
@@ -13276,8 +13431,8 @@
       HudBars.built = true;
     }
     function updateBonusHearts(p) {
-      // bonus hearts: Heart Charm +5, Abyssal Armor +3 (1.0.4)
-      const mh = 20 + (hasPerk(p, 'health') ? 10 : 0) + armorBonusHearts(p) * 2;
+      // bonus hearts: Heart Charm +5, Health Boost Potion +5, Abyssal Armor +4
+      const mh = 20 + (hasPerk(p, 'health') ? 10 : 0) + (hasBuff(p, 'health') ? 10 : 0) + armorBonusHearts(p) * 2;
       if (p.maxHealth !== mh) { p.maxHealth = mh; p.health = Math.min(p.health, mh); }
       const bar = el('bonus-bar'), n = Math.max(1, Math.ceil((mh - 20) / 2));
       if (!HudBars.bonus || HudBars.bonus.length !== n) {
@@ -13747,6 +13902,13 @@
     function quickMove(container, index) {
       const stack = container[index];
       if (!stack) return;
+      const pl = Game.player;
+      if (container === pl.inventory && Game.ui.mode === 'inventory' && itemDef(stack.item).kind === 'armor') {   // (1.0.5) shift-click armor: wear it
+        const prev = pl.armorSlot;
+        pl.armorSlot = Object.assign({}, stack, { qty: 1 });
+        container[index] = prev || null;
+        armorEquipFX(stack.item); refreshInventoryUI(); return;
+      }
       const t = quickMoveTarget(container, index);
       const left = mergeInto(t.arr, t.indices, stack);
       if (left <= 0) container[index] = null; else stack.qty = left;
@@ -13899,6 +14061,58 @@
       if (h.rules && h.rules.takeOnly && other) return;
       if (h.rules && h.rules.accept && other && !h.rules.accept(other.item)) return;
       inv[i] = h.container[h.index]; h.container[h.index] = other;
+      refreshInventoryUI();
+    }
+    // (1.0.5) SORT: merge partial stacks, then order by kind (tools, armor, charms, potions, food, other
+    // items, blocks) and id. `indices` are the slots of `arr` to tidy.
+    function itemSortRank(item) {
+      const d = itemDef(item), k = d && d.kind;
+      return k === 'tool' || k === 'bow' ? 0 : k === 'armor' ? 1 : k === 'perk' ? 2 : k === 'potion' ? 3 : k === 'food' ? 4 : k === 'block' ? 6 : k === 'wall' ? 7 : 5;
+    }
+    function sortSlots(arr, indices) {
+      const groups = new Map(), loose = [];
+      for (const i of indices) {
+        const s = arr[i]; if (!s) continue;
+        const max = itemDef(s.item).stack || 64;
+        if (max <= 1 || s.durability != null || s.ench) { loose.push(s); continue; }
+        const key = s.item + '|' + JSON.stringify(Object.assign({}, s, { qty: 0 }));
+        if (!groups.has(key)) groups.set(key, { proto: s, qty: 0 });
+        groups.get(key).qty += s.qty;
+      }
+      const out = loose.slice();
+      for (const g of groups.values()) {
+        const max = itemDef(g.proto.item).stack || 64;
+        for (let left = g.qty; left > 0; left -= max) out.push(Object.assign({}, g.proto, { qty: Math.min(max, left) }));
+      }
+      out.sort((a, b) => (itemSortRank(a.item) - itemSortRank(b.item)) || (a.item - b.item) || (b.qty - a.qty));
+      indices.forEach((idx, n) => { arr[idx] = out[n] || null; });
+    }
+    function sortButton() {
+      const p = Game.player, mode = Game.ui.mode;
+      if (CONTAINER_SCREENS.includes(mode) && mode === 'chest') { const c = getContainer(Game.ui.x, Game.ui.y); if (c) sortSlots(c.slots, c.slots.map((_, i) => i)); }
+      else sortSlots(p.inventory, ALL_INV.slice(9));
+      refreshInventoryUI();
+    }
+    function quickStackButton() {   // everything in your bag (not the hotbar) that the chest already holds goes in
+      const p = Game.player, c = getContainer(Game.ui.x, Game.ui.y);
+      if (!c) return;
+      const have = new Set(c.slots.filter(Boolean).map(s => s.item)), all = c.slots.map((_, i) => i);
+      for (const i of ALL_INV.slice(9)) {
+        const s = p.inventory[i];
+        if (!s || !have.has(s.item)) continue;
+        const left = mergeInto(c.slots, all, s);
+        if (left <= 0) p.inventory[i] = null; else s.qty = left;
+      }
+      refreshInventoryUI();
+    }
+    function takeAllButton() {
+      const p = Game.player, c = getContainer(Game.ui.x, Game.ui.y);
+      if (!c) return;
+      for (let i = 0; i < c.slots.length; i++) {
+        const s = c.slots[i]; if (!s) continue;
+        const left = mergeInto(p.inventory, ALL_INV, s);
+        if (left <= 0) c.slots[i] = null; else s.qty = left;
+      }
       refreshInventoryUI();
     }
     // Throw items out in front of you (they can't be picked up for a moment).
@@ -14065,7 +14279,8 @@
         html += `<div class="tt-line">When in hand:</div><div class="tt-good"> ${dmg} ${Wp && Wp.type === 'musket' ? 'Shot' : 'Attack'} Damage</div>`;
         if (Wp) html += weaponTooltip(stack, Wp);
         if (stack.durability != null) html += `<div class="tt-line">Durability: ${stack.durability} / ${stack.maxDurability}</div>`;
-      } else if (def.kind === 'food') html += `<div class="tt-line">Restores ${def.hunger} hunger</div>`;
+      } else if (def.kind === 'potion') html += `<div class="tt-perk" style="color:${POTIONS[def.id].color}">${esc(POTIONS[def.id].label)}</div><div class="tt-line">${esc(POTIONS[def.id].desc)}</div><div class="tt-line">Right-click to drink (you keep the bottle)</div>`;
+      else if (def.kind === 'food') html += `<div class="tt-line">Restores ${def.hunger} hunger</div>`;
       else if (def.kind === 'armor') {
         html += `<div class="tt-blue">+${def.defense + enchLevel(stack, 'prot')} Armor</div>`;
         if (def.aquatic) html += `<div class="tt-blue">Hold your breath 2x longer</div><div class="tt-blue">Swim faster</div>`;
@@ -14133,13 +14348,16 @@
     function creativeCategory(id) {
       const d = ITEMS[id];
       if (d.kind === 'block' || d.kind === 'wall') return 'blocks';
-      if (d.kind === 'tool' || d.kind === 'armor' || d.kind === 'bucket' || d.kind === 'boat') return 'tools';
+      if (d.kind === 'armor') return 'armor';
+      if (d.kind === 'perk') return 'charms';
+      if (d.kind === 'potion') return 'potions';
+      if (d.kind === 'tool' || d.kind === 'bow' || d.kind === 'bucket' || d.kind === 'boat') return 'tools';
       if (d.kind === 'food') return 'food';
       return 'items';
     }
     function creativeItems() {
       if (creativeItems.list) return creativeItems.list;
-      const order = { blocks: 0, tools: 1, food: 2, items: 3 };
+      const order = { blocks: 0, tools: 1, armor: 2, charms: 3, potions: 4, food: 5, items: 6 };
       const out = [];
       for (const k in ITEMS) {
         const id = +k, d = ITEMS[id];
@@ -14153,7 +14371,8 @@
     function renderCreativeCatalog() {
       const grid = el('creative-grid');
       const q = el('creative-search').value.trim().toLowerCase();
-      const ids = creativeItems().filter(id => (creativeTab === 'all' || creativeCategory(id) === creativeTab) && (!q || ITEMS[id].name.toLowerCase().includes(q)));
+      const words = q.split(/\s+/).filter(Boolean);   // (every word has to match the name or the tab it's in)
+      const ids = creativeItems().filter(id => (creativeTab === 'all' || creativeCategory(id) === creativeTab) && words.every(w => ITEMS[id].name.toLowerCase().includes(w) || creativeCategory(id).startsWith(w)));
       const sig = creativeTab + '|' + q;
       document.querySelectorAll('#creative-tabs .mc-btn').forEach(b => b.classList.toggle('selected', b.dataset.tab === creativeTab));
       if (grid.dataset.sig === sig && grid.childElementCount) return;   // (keeps the scroll position)
@@ -14171,8 +14390,12 @@
       }
     }
     function creativeTake(id, e) {
-      if (Game.cursor) { Game.cursor = null; refreshInventoryUI(); return; }   // holding something: the grid deletes it
       const max = itemDef(id).stack || 64;
+      if (Game.cursor) {   // (1.0.5) holding something: more of the same tops it up, anything else swaps it (the X deletes)
+        if (Game.cursor.item === id) Game.cursor.qty = Math.min(max, Game.cursor.qty + (e.button === 2 ? 1 : max));
+        else Game.cursor = makeStack(id, e.button === 2 ? 1 : max);
+        refreshInventoryUI(); return;
+      }
       if (e.shiftKey) { giveOrDrop(makeStack(id, max)); refreshInventoryUI(); return; }
       Game.cursor = makeStack(id, e.button === 2 ? 1 : max);
       refreshInventoryUI();
@@ -14239,6 +14462,25 @@
       el('perk-desc').innerHTML = on.length ? on.map(k => `<span style="color:${k.color};text-shadow:1px 1px 0 #000">${k.name}</span>`).join(' &middot; ')
         : 'Craft charms from a Gold Charm Frame, or buy them from villagers.';
     }
+    // (1.0.5) potion effects under the charm icons, with their time left
+    function renderBuffHud() {
+      const p = Game.player, hud = el('buff-hud');
+      const keys = p && p.buffs && Game.screen !== 'title' ? Object.keys(p.buffs).filter(k => p.buffs[k] > 0) : [];
+      const sig = keys.join(',');
+      if (hud.dataset.sig !== sig) {
+        hud.dataset.sig = sig; hud.innerHTML = '';
+        for (const k of keys) {
+          const d = document.createElement('div'); d.className = 'buff-icon'; d.title = BUFFS[k].name; d.dataset.k = k;
+          d.style.cssText = iconStyleFor(BUFFS[k].icon) + `border-color:${BUFFS[k].color};`;
+          const t = document.createElement('div'); t.className = 'buff-time'; d.appendChild(t); hud.appendChild(d);
+        }
+      }
+      for (const d of hud.children) {
+        const left = Math.ceil(p.buffs[d.dataset.k]), txt = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+        const t = d.firstChild; if (t.textContent !== txt) t.textContent = txt;
+        d.classList.toggle('low', left <= 15);
+      }
+    }
     function renderPerkHud() {
       const p = Game.player, hud = el('perk-hud');
       const sig = p ? p.perks.map(s => s ? s.item : 0).join(',') + (Game.screen === 'title') : '';
@@ -14267,6 +14509,9 @@
       el('furnace-section').style.display = mode === 'furnace' ? 'flex' : 'none';
       el('gemcutter-section').style.display = mode === 'gemcutter' ? 'flex' : 'none';
       el('perk-section').style.display = mode === 'inventory' ? 'block' : 'none';
+      el('btn-takeall').style.display = el('btn-quickstack').style.display = mode === 'chest' ? '' : 'none';   // (1.0.5)
+      el('btn-sort').style.display = mode === 'inventory' || mode === 'chest' || mode === 'table' ? '' : 'none';
+      el('creative-clear').style.display = Game.creative ? '' : 'none';
       el('enchant-section').style.display = mode === 'enchant' ? 'flex' : 'none';
       if (mode === 'inventory') renderPerkSlots();
       if (mode === 'enchant') renderEnchantScreen();
@@ -14317,8 +14562,18 @@
           const img = document.createElement('div'); img.className = 'slot-icon'; img.style.cssText = iconStyleFor(p.armorSlot.item);
           armorEl.appendChild(img);
         } else armorEl.title = 'No armor equipped';
+        armorEl.title = p.armorSlot ? 'Click to unequip (drop armor here to swap it)' : 'Drop armor here to wear it';
         armorEl.onpointerdown = (e) => {
           e.preventDefault();
+          const cur = Game.cursor;
+          if (cur) {   // (1.0.5) drop armor on the slot to wear it (what you wore ends up in your hand)
+            if (itemDef(cur.item).kind !== 'armor') return;
+            const old = p.armorSlot;
+            p.armorSlot = Object.assign({}, cur, { qty: 1 });
+            Game.cursor = cur.qty > 1 ? Object.assign({}, cur, { qty: cur.qty - 1 }) : null;
+            if (old) { if (Game.cursor) giveOrDrop(old); else Game.cursor = old; }
+            armorEquipFX(p.armorSlot.item); refreshInventoryUI(); return;
+          }
           if (!p.armorSlot) return;
           giveOrDrop(p.armorSlot); p.armorSlot = null;
           refreshInventoryUI();
@@ -14688,6 +14943,7 @@
       let d = W.dmg + enchLevel(slot, 'sharp') + armorBonusDamage(p);
       if (W.type === 'katana' && wearingSamurai(p)) d += 2;   // Samurai Armor + a katana
       if (hasPerk(p, 'damage')) d = Math.max(d + 1, Math.ceil(d * 1.25));   // Warrior Charm
+      if (hasBuff(p, 'damage')) d = Math.max(d + 1, Math.ceil(d * 1.4));   // Damage Boost Potion
       return d;
     }
     function wearWeapon(p, slot, n) {
@@ -16675,7 +16931,7 @@
       const out = Game.outside;
       return {
         x: out ? out.doorX + 0.2 : p.x, y: out ? out.doorFeet - p.h : p.y, health: p.health, hunger: p.hunger, hotbarIndex: p.hotbarIndex,
-        inventory: p.inventory, craftGrid: p.craftGrid, armorSlot: p.armorSlot, perks: p.perks, adv: Adv.save(), mode: Game.creative ? 'creative' : 'survival',
+        inventory: p.inventory, craftGrid: p.craftGrid, armorSlot: p.armorSlot, perks: p.perks, buffs: p.buffs, adv: Adv.save(), mode: Game.creative ? 'creative' : 'survival',
         bed: p.bed || null,   // (1.0.4)
       };
     }
@@ -17594,6 +17850,7 @@
         Game.player.craftGrid = (saveData.player.craftGrid || new Array(9).fill(null)).map(s => s ? Object.assign({}, s) : null);
         Game.player.armorSlot = saveData.player.armorSlot ? Object.assign({}, saveData.player.armorSlot) : null;
         Game.player.perks = [0, 1, 2].map(i => (saveData.player.perks || [])[i] ? Object.assign({}, saveData.player.perks[i]) : null);
+        Game.player.buffs = Object.assign({}, saveData.player.buffs || {});   // (1.0.5) potion effects carry on
         Game.player.bed = saveData.player.bed ? Object.assign({}, saveData.player.bed) : null;   // (1.0.4)
         if (saveData.player.swimming) { Game.player.swimming = true; Game.player.h = SWIM_HEIGHT; }
         const rb = Game.world.boats[saveData.player.riding];
@@ -18065,6 +18322,7 @@
       else if (!p.sprinting) p.sprintCharge = Math.max(0, p.sprintCharge - dt * 3);
       let maxSpeed = p.sprinting ? MOVE_SPEED + (SPRINT_SPEED - MOVE_SPEED) * p.sprintCharge : MOVE_SPEED;
       if (hasPerk(p, 'speed')) maxSpeed *= 1.25;   // Swift Charm
+      if (hasBuff(p, 'move')) maxSpeed *= 1.35;    // Movement Boost Potion
       { const hs = p.selectedSlot(), hw = hs && WEAPONS[hs.item]; if (hw && hw.type === 'hammer') maxSpeed *= 0.85; if (p.musketReload) maxSpeed *= 0.6; if (p.hammer && p.hammer.t < 0.4) maxSpeed *= 0.5; }
       if (inWater) maxSpeed *= hasAquaArmor(p) ? 0.7 : 0.55;
       const target = move * maxSpeed;
@@ -18176,12 +18434,12 @@
         if (jumpKey) p.vy = Math.max(p.vy - 18 * dt, -3.6);
       } else if (p.jumpBuffer > 0 && p.coyote <= 0 && hasPerk(p, 'dash') && !p.usedDouble && !p.inLava) {
         // Cloud Charm: a second jump in mid-air, off a puff of cloud
-        p.vy = -JUMP_SPEED * (hasPerk(p, 'jump') ? 1.15 : 0.95);
+        p.vy = -JUMP_SPEED * (hasPerk(p, 'jump') ? 1.15 : 0.95) * (hasBuff(p, 'move') ? 1.12 : 1);
         p.usedDouble = true; p.jumpBuffer = 0; p.jumping = true; p.fallStartY = p.y;
         perkBurst(p, 'dash');
         sfx('sweep', { pitch: 1.4 });
       } else if (p.jumpBuffer > 0 && p.coyote > 0) {
-        p.vy = -JUMP_SPEED * (hasPerk(p, 'jump') ? 1.25 : 1);   // Spring Charm: about 60% higher
+        p.vy = -JUMP_SPEED * (hasPerk(p, 'jump') ? 1.25 : 1) * (hasBuff(p, 'move') ? 1.12 : 1);   // Spring Charm: about 60% higher (the Movement Potion: 25% higher)
         if (hasPerk(p, 'jump')) perkBurst(p, 'jump');
         const running = Math.abs(p.vx) > MOVE_SPEED + 0.6;
         if (running && move !== 0) p.vx = move * Math.min(Math.abs(p.vx) + SPRINT_JUMP_BOOST, SPRINT_SPEED * 1.2);
@@ -18205,12 +18463,31 @@
         } else p.powered = false;
       }
 
+      // (1.0.5) Wings Charm: hold Space in the air to FLY (8 s, refilled on the ground). Steer with A/D,
+      // hold S to drop. When the flight runs out (or you let go) you glide down slowly.
+      if (hasPerk(p, 'wings')) {
+        if (p.onGround || p.onLadder || inWater) { p.wingFuel = WINGS_FUEL; p.wingsOn = false; p.wingsReady = false; }
+        else {
+          if (p.wingFuel == null) p.wingFuel = WINGS_FUEL;
+          if (!jumpKey) p.wingsReady = true;   // (let go of Space once after leaving the ground: the first press was the jump)
+          if (Input.jump && p.wingFuel > 0 && !p.inLava && !Input.down && (p.wingsOn || p.wingsReady || p.vy > -2)) {
+            p.wingFuel = Math.max(0, p.wingFuel - dt);
+            p.vy = approach(p.vy, -WINGS_RISE, 90 * dt);
+            if (move) p.vx = approach(p.vx, move * WINGS_SPEED, 34 * dt);
+            p.fallStartY = p.y; p.wingsOn = true;
+            p.wingSndT = (p.wingSndT || 0) - dt;
+            if (p.wingSndT <= 0) { p.wingSndT = 0.38; sfx('sweep', { vol: 0.35, pitch: 1.3 + Math.random() * 0.2 }); }
+          } else p.wingsOn = false;
+        }
+      } else { p.wingsOn = false; }
+
       const vxBefore = p.vx, vyBefore = p.vy, wasGround = p.onGround;
       applyGravityAndBuoyancy(p, Game.world, dt);
       if (!inWater && !(p.subFrac > 0) && p.vy > 0) p.vy = Math.min(MAX_FALL_SPEED, p.vy + GRAVITY * (FALL_GRAVITY_MULT - 1) * dt);   // (never while in water: it would pump your bobbing)
       // Feather Charm: drift down slowly (hold S to drop) and never take fall damage
-      if (hasPerk(p, 'feather') && !p.onGround && p.vy > FEATHER_FALL && !Input.down && !inWater && !p.inLava) {
-        p.vy = FEATHER_FALL; p.fallStartY = p.y; p.featherFalling = true;
+      const slowFall = hasPerk(p, 'wings') ? WINGS_FALL : hasPerk(p, 'feather') ? FEATHER_FALL : 0;   // (Wings glide a bit slower than the Feather Charm)
+      if (slowFall && !p.onGround && p.vy > slowFall && !Input.down && !inWater && !p.inLava) {
+        p.vy = slowFall; p.fallStartY = p.y; p.featherFalling = true;
       } else p.featherFalling = false;
       if (p.inLava) {   // wading through lava: slow, and you slowly sink
         p.vx *= Math.pow(0.02, dt);
@@ -18447,6 +18724,7 @@
     //   Slow Falling — feathers drift around you as you glide down
     // ---------------------------------------------------------------------------
     const DASH_SPEED = 19, FEATHER_FALL = 3.2, POWER_SPEED = 8.5, POWER_FUEL = 1.2;
+    const WINGS_FUEL = 8, WINGS_RISE = 5.4, WINGS_SPEED = 8.4, WINGS_FALL = 2.3;   // (1.0.5) Wings Charm: 8 s of flight, a gentle glide down
     function hasPerk(p, key) {
       if (!p || !p.perks) return false;
       for (const s of p.perks) if (s && ITEMS[s.item] && ITEMS[s.item].perk === key) return true;
@@ -18523,6 +18801,10 @@
         p.heartT = (p.heartT || 1) - dt;
         if (p.heartT <= 0) { p.heartT = 1.2 + Math.random(); Game.particles.push({ x: cx + (Math.random() - 0.5) * 0.8, y: p.y + 0.6, vx: (Math.random() - 0.5) * 0.3, vy: -0.9, life: 1.1, age: 0, size: 0.28, kind: 'heart', gravity: -0.2 }); }
       }
+      if (p.wingsOn && Math.random() < dt * 22 * m)   // (1.0.5) wing-beats shed little feathers
+        Game.particles.push({ x: cx - p.facing * 0.5 + (Math.random() - 0.5) * 0.6, y: p.y + 0.5 + Math.random() * 0.8, vx: -p.facing * (0.5 + Math.random()) + (Math.random() - 0.5), vy: 0.6 + Math.random() * 0.8, life: 0.8, age: 0, size: 0.24, kind: 'feather', rot: Math.random() * 6, spin: (Math.random() - 0.5) * 6, gravity: 0 });
+      if (hasBuff(p, 'move') && Math.abs(p.vx) > MOVE_SPEED * 1.1 && p.onGround && Math.random() < dt * 14 * m)
+        Game.particles.push({ x: cx - Math.sign(p.vx) * 0.3, y: p.y + p.h - 0.15, vx: -Math.sign(p.vx) * 1.5, vy: -0.4, life: 0.35, age: 0, size: 0.07, kind: 'star', color: '#6fe8ff', gravity: 0 });
       if (p.featherFalling && Math.random() < dt * 6 * m)
         Game.particles.push({ x: cx + (Math.random() - 0.5) * 1.2, y: p.y + Math.random() * p.h, vx: (Math.random() - 0.5) * 0.6, vy: -0.4, life: 1.2, age: 0, size: 0.3, kind: 'feather', rot: Math.random() * 6, spin: (Math.random() - 0.5) * 4, gravity: 0.3 });
     }
@@ -18536,8 +18818,24 @@
       if (p.dead || p.swimming) return;
       const t = p.animClock || 0;
       const auras = [];
-      if (hasPerk(p, 'health')) auras.push('255,110,170');
-      if (hasPerk(p, 'damage')) auras.push('255,80,40');
+      if (hasPerk(p, 'health') || hasBuff(p, 'health')) auras.push('255,110,170');
+      if (hasPerk(p, 'damage') || hasBuff(p, 'damage')) auras.push('255,80,40');
+      if (hasBuff(p, 'move')) auras.push('90,225,255');
+      // (1.0.5) Wings Charm: a pair of feathered wings on your back, beating fast while you fly
+      if (hasPerk(p, 'wings')) {
+        const flap = p.wingsOn ? Math.sin(t * 17) : !p.onGround ? Math.sin(t * 5) * 0.35 : Math.sin(t * 1.6) * 0.08;
+        const dir = -p.facing, bx = fx + dir * w * 0.1, by = fy - h * 0.6;
+        for (const [scale, lag, col, hi] of [[0.85, 0.5, '#b9d7ee', '#8fb4d2'], [1, 0, '#f2f9ff', '#bfe3ff']]) {
+          ctx.save(); ctx.translate(bx, by); ctx.scale(dir, 1); ctx.rotate(-0.75 + flap * 0.7 - lag * 0.35 - (p.onGround ? 0.25 : 0));
+          for (let i = 0; i < 6; i++) {
+            const len = h * (0.62 - i * 0.055) * scale, a = i * 0.2;
+            ctx.save(); ctx.rotate(a); ctx.fillStyle = i % 2 ? hi : col;
+            ctx.beginPath(); ctx.moveTo(0, -h * 0.025); ctx.lineTo(len, -h * 0.045); ctx.lineTo(len * 1.04, 0); ctx.lineTo(len, h * 0.045); ctx.lineTo(0, h * 0.025); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+      }
       for (let i = 0; i < auras.length; i++) {
         const cy = fy - h / 2, r = h * (0.62 + 0.05 * Math.sin(t * 3 + i * 2));
         const gr = ctx.createRadialGradient(fx, cy, 0, fx, cy, r);
@@ -18925,6 +19223,16 @@
       });
       document.querySelectorAll('#creative-tabs .mc-btn').forEach(b => b.addEventListener('click', () => { creativeTab = b.dataset.tab; renderCreativeCatalog(); }));
       el('creative-search').addEventListener('input', () => renderCreativeCatalog());
+      el('btn-sort').addEventListener('click', sortButton);
+      el('btn-quickstack').addEventListener('click', quickStackButton);
+      el('btn-takeall').addEventListener('click', takeAllButton);
+      let clearArmed = 0;   // (Clear needs two clicks)
+      el('creative-clear').addEventListener('click', () => {
+        const b = el('creative-clear'), now = performance.now();
+        if (now - clearArmed > 3000) { clearArmed = now; b.textContent = 'Sure?'; setTimeout(() => { if (performance.now() - clearArmed >= 2900) b.textContent = 'Clear'; }, 3000); return; }
+        clearArmed = 0; b.textContent = 'Clear';
+        const pl = Game.player; pl.inventory.fill(null); pl.armorSlot = null; Game.cursor = null; refreshInventoryUI();
+      });
       el('creative-search').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.target.blur(); closePanels(); } e.stopPropagation(); });
       el('creative-trash').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.cursor = null; refreshInventoryUI(); });
       el('seed-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') el('btn-create').click(); if (e.key === 'Escape') showMenu('menu-main'); });

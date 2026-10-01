@@ -10,9 +10,9 @@ ABYSSAL ARMOR (new)
   Recipe (Crafting Table):   B A B      B = Block of Ruby (7)
                              B H B      A = Samurai Armor
                              B B B      H = Abyssal Heart
-  - 10 defense
-  - +5 damage to EVERYTHING you do (swords, katanas, hammers, bow, musket)
-  - +3 extra hearts
+  - 12 defense
+  - +7 damage to EVERYTHING you do (swords, katanas, hammers, bow, musket)
+  - +4 extra hearts
   - Crimson-and-void look when you wear it (it uses the Samurai body shape).
 
 
@@ -89,10 +89,11 @@ KING OF THE ABYSS: DESPERATION PHASE (new, rebuilt)
   New sounds: beam, purple orb fire, fire orb (Gigablast) fire, orb impact (Gigablast
   bursting) in Sounds/boss/. New song: Sounds/music/desperation_BGM.mp3.
 
-  DAMAGE: armour takes a flat amount off every hit (Abyssal Armor: 10).
+  DAMAGE: armour takes a flat amount off every hit (Abyssal Armor: 12). Against the
+  King it can never take off more than 75% of a hit.
     - Every hit the King lands does 60% more (his normal attacks too).
     - Desperation: orb 14, Gigablast 19, beam 21.
-      In Abyssal Armor: 4, 9, 11 per hit, out of 26 health.
+      In Abyssal Armor: 4, 7, 9 per hit, out of 28 health.
 
   To tune it (index.html):
     BOSSES > abyssking > desperation: { at: 0.01, prep: 10, time: 150, exhaustedMult: 1.5 }
@@ -110,3 +111,47 @@ BEDS SET YOUR SPAWN POINT
     and go back to world spawn.
   - A bed inside a building respawns you at that building's front door.
   - In multiplayer, every player has their own bed. It's saved with the world.
+
+
+------------------------------------------------------------------------------
+LATER IN 1.0.4
+------------------------------------------------------------------------------
+
+THE KING GOES AFTER EVERYONE (multiplayer)
+  - With more than one player he takes TURNS: each new attack goes after a different
+    player, so it isn't always whoever summoned him.
+  - The exception: a clear damage leader. Someone doing at least twice the damage of
+    everyone else (over the last ~6 seconds) keeps his attention until that changes.
+
+WINGS CHARM (new)
+  - Hold Space in the air to FLY for about 8 seconds (steer with A / D, hold S to drop).
+    The flight bar over your head refills on the ground. When it runs out, or you let
+    go, you glide down gently with no fall damage.
+  - Craft it: Gold Charm Frame + Feather Charm + Power Charm + Diamond (shapeless).
+    A villager sells it for 34 emeralds.
+  - You can see the wings on your back, and they beat while you fly.
+
+POTIONS (new): right-click to drink; you keep the Glass Bottle. They show under your
+charms with a timer. Each craft gives 2 (shapeless, Crafting Table):
+  - Damage Boost Potion    Glass Bottle + Ruby + Bone + Coal. +40% damage with
+                           everything for 4 minutes.
+  - Health Boost Potion    Glass Bottle + 2 Apples + Glow Mushroom. +5 hearts for
+                           5 minutes and heals you 10 health.
+  - Movement Boost Potion  Glass Bottle + Leather + String + Cobalt Ingot. +35% speed
+                           and +25% jump height for 4 minutes.
+  They stack with the matching charm. Drinking again refreshes the timer.
+
+ARMOR BUFFED (defense per hit)
+  Leather 2 -> 3, Iron 5 -> 6, Cobalt 6 -> 8, Diamond 7 -> 9, Ruby 8 -> 10,
+  Samurai 7 -> 9, Abyssal 10 -> 12 (and +7 damage instead of +5, +4 hearts instead of +3).
+
+INVENTORY & CREATIVE MENU
+  - Sort button: merges your stacks and sorts them (tools, armor, charms, potions, food,
+    items, blocks). With a chest open it sorts the chest.
+  - Chests: Quick Stack (put in everything the chest already has) and Take All.
+  - Armor: drop armor on the armor slot to wear it (what you wore goes to your hand),
+    or Shift-click armor in your inventory.
+  - Creative: new Armor, Charms and Potions tabs; the search takes several words
+    ("ruby chest"); clicking another item swaps what you hold instead of deleting it
+    (drop it on the X, or hover a slot and press Delete); Clear button (click twice);
+    press / to jump to the search; the item list is taller on big screens.
