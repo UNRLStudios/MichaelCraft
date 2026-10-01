@@ -54,28 +54,34 @@ KING OF THE ABYSS: DESPERATION PHASE (new, rebuilt)
     0:10       NEW SONG       The Desperation song starts and he fights for 2:30
                               ("survive 2:30" on the boss bar).
 
-  How it works: ONE attack at a time. Every attack has a warning you can read, a way
-  through that is wider than you are, and a breather after it. No random spam.
+  How it works: every attack has a warning you can read and a way through that is
+  wider than you are. No random spam, nothing unavoidable. It is FAST and it is HARD:
+  projectiles reach 9-13 blocks a second (you sprint at 8.6), the breathers between
+  attacks shrink to almost nothing, and in the last two acts two attacks run at once.
 
-    SPIRAL      slow rotating arms of orbs: walk with the gap. They reverse once
+    SPIRAL      fast rotating arms of orbs: run with the gap. They reverse once
                 (after a short pause).
-    FAN         a white line shows where his darts are aimed: sidestep it.
-    GIGABLAST   a big slow orb that bursts into a ring of orbs, with a hole near you.
+    FAN         a white line shows where his darts are aimed. He LEADS you: if you
+                run in a straight line the darts go where you're going.
+    GIGABLAST   big orbs that burst into a ring of orbs, with a hole near you.
     BEAM COMB   vertical beams, shaded with their TRUE width. Then the same row
                 shifted over: step between them.
     LANCE       a beam that follows you, then LOCKS: move when it locks.
-    WAVE        one low orb sweeps the arena along a white line: JUMP it (later,
-                two in a row).
-    RAIN        orbs fall from the ceiling: the GREEN lane is the safe gap.
+    WAVE        low orbs sweep the arena along a white line: JUMP them (2, then 3 in
+                a row).
+    RAIN        orbs fall from the ceiling: the GREEN lane is the safe gap. (The lane
+                is always on floor you can reach: never over the lava.)
+    SEEKERS     a swarm of cyan orbs that CHASE you. They only turn so fast: run a
+                curve, then cut back, or jump at the last moment. From Act II one
+                seeker is ALWAYS on your tail, on top of whatever else is happening.
 
-  It builds over five acts (the attacks get a little faster, the breathers shorter):
-     0:00 Act I     spiral, fan, rain
-     0:28 Act II    + gigablast, beam comb
-     0:58 Act III   + wave, lance
-     1:32 Act IV    everything, faster
-     2:05 Finale    everything, as fast as it gets
-  Nothing is faster than you can sprint. In multiplayer every player gets their own
-  aim line, gap and jump line.
+  It builds over five acts:
+     0:00 Act I     spiral, fan, rain, wave
+     0:22 Act II    + gigablast, beam comb, seekers (and the seeker on your tail)
+     0:46 Act III   + lance: everything
+     1:14 Act IV    everything, faster, sometimes two attacks at once
+     1:44 Finale    everything, as fast as it gets, often two at once
+  In multiplayer every player gets their own aim line, gap, jump line and seekers.
 
   Survive it and he's EXHAUSTED: he sinks to the floor, his melee armour is gone,
   and every hit does 1.5x damage (at 1% health that's one hit).
@@ -85,13 +91,13 @@ KING OF THE ABYSS: DESPERATION PHASE (new, rebuilt)
 
   DAMAGE: armour takes a flat amount off every hit (Abyssal Armor: 10).
     - Every hit the King lands does 60% more (his normal attacks too).
-    - Desperation: orb 13, Gigablast 18, beam 19.
-      In Abyssal Armor: 3, 8, 9 per hit, out of 26 health.
+    - Desperation: orb 14, Gigablast 19, beam 21.
+      In Abyssal Armor: 4, 9, 11 per hit, out of 26 health.
 
   To tune it (index.html):
     BOSSES > abyssking > desperation: { at: 0.01, prep: 10, time: 150, exhaustedMult: 1.5 }
     BOSSES > abyssking > dmgMult: 1.6
-    DESP_DMG = { orb: 8, beam: 12, blast: 11 }  (before the x1.6)
+    DESP_DMG = { orb: 9, beam: 13, blast: 12 }  (before the x1.6)
     DESP_ACTS (which attacks each act picks from), and in kingDesperation each
     attack's pace(slow, fast) numbers (its speed and how often it fires, start -> end).
 

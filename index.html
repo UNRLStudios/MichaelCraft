@@ -9017,45 +9017,48 @@
       if (by && by !== 'host' && Net.peers.has(by)) netSend(by, { t: 'adv', id: 'summon' }); else if (!Game.outside) Adv.grant('summon');
     }
     // ---------------------------------------------------------------------------
-    // (1.0.4) THE KING'S DESPERATION PHASE (rebuilt from scratch)
+    // (1.0.4) THE KING'S DESPERATION PHASE (rebuilt from scratch, then made harder)
     //
     // Modelled on the Desperation phase in Calamity / Infernum (Supreme Calamitas),
-    // but a lot gentler: he's the FIRST boss.
+    // but a little gentler: he's the FIRST boss.
     //
     //   * At 1% health he can't be hurt (no single hit can skip it), sacrifices his
     //     imps and floats to the middle of his arena.
     //   * PREP (10 s): nothing is thrown at you. Reposition. His old song fades out.
-    //   * Then the Desperation song starts and he fights for his life for 150 s.
+    //   * Then the Desperation song starts and he fights for 150 s.
     //   * Survive it and he's EXHAUSTED: he sinks to the floor and one hit ends him.
     //
     // What makes it skill-based and fair:
-    //   * ONE attack at a time, each with a name you learn, a warning you can read, and
-    //     a breather after it. Nothing is random spam and nothing is unavoidable.
-    //   * Every attack has a SAFE way through that is wider than your body:
-    //       SPIRAL   slow rotating arms: walk with the gap (they reverse once!)
-    //       FAN      a line shows where the darts are aimed: sidestep it
+    //   * Every attack has a name you learn, a warning you can read, and a way through
+    //     that is wider than your body. Nothing is random spam, nothing is unavoidable.
+    //       SPIRAL    fast rotating arms: run with the gap (they reverse once!)
+    //       FAN       a line shows where the darts are aimed (he leads a running target)
     //       GIGABLAST a big orb that bursts into a ring with a hole near you
-    //       COMB     vertical beams, warned with their true width, then shifted
-    //       LANCE    a beam that tracks you, then locks: move when it locks
-    //       WAVE     a low orb sweeps the arena (white line): JUMP it (twice, later)
-    //       RAIN     orbs fall from the ceiling: the green lane is the safe gap
-    //   * Starts slow and builds over five acts. Speeds stay under your sprint (8.6).
-    //   * In multiplayer every player gets their own aim / gap / jump line.
+    //       COMB      vertical beams, warned with their true width, then shifted
+    //       LANCE     a beam that tracks you, then locks: move when it locks
+    //       WAVE      low orbs sweep the arena (white line): JUMP them, 2-3 in a row
+    //       RAIN      orbs fall from the ceiling: the green lane is the safe gap
+    //       SEEKERS   a swarm of orbs that CHASE you (they turn slowly: juke them)
+    //   * From Act II a single seeker is always on your tail (the "layer").
+    //   * Acts IV and V run TWO attacks at once (a jump wave under a fan, ...).
+    //   * Builds over five acts; the breathers between attacks shrink to almost nothing.
     //
     // Tuning: BOSSES > abyssking > desperation, DESP_DMG, DESP_ACTS and each card's
     // pace(slow, fast) numbers in kingDesperation (slow = start of the fight).
     // Damage (armour takes a FLAT amount off, Abyssal Armor: 10), after the King's x1.6:
-    // orb 13, Gigablast 18, beam 19.
+    // orb 14, Gigablast 19, beam 21.
     // ---------------------------------------------------------------------------
-    const DESP_DMG = { orb: 8, beam: 12, blast: 11 };
-    const DESP_POOL = ['wave', 'comb', 'lance', 'giga', 'spiral', 'fan', 'rain'];
+    const DESP_DMG = { orb: 9, beam: 13, blast: 12 };
+    const DESP_POOL = ['wave', 'comb', 'lance', 'giga', 'spiral', 'fan', 'rain', 'seekers'];
     const DESP_ACTS = [   // [fight second it starts, which attacks it picks from]
-      [0, ['spiral', 'fan', 'rain']],
-      [28, ['fan', 'rain', 'giga', 'comb', 'spiral']],
-      [58, DESP_POOL],
-      [92, DESP_POOL],
-      [125, DESP_POOL],
+      [0, ['spiral', 'fan', 'rain', 'wave']],
+      [22, ['fan', 'rain', 'giga', 'comb', 'spiral', 'seekers', 'wave']],
+      [46, DESP_POOL],
+      [74, DESP_POOL],
+      [104, DESP_POOL],
     ];
+    // what can run UNDERNEATH an attack in the last two acts (these never move the King)
+    const DESP_SECOND = { fan: ['wave', 'comb'], lance: ['wave', 'rain'], spiral: ['wave'], giga: ['comb', 'wave'], seekers: ['comb', 'wave'] };
     const DESP_LINES = [   // [seconds since he started (the first 10 are the prep), what he says]
       [0, 'It cannot end like this...'],
       [4, 'If I fall, the Abyss falls with me!'],
@@ -9080,7 +9083,7 @@
       setBossMove(m, 'desperation');
       const I = BOSSES[m.type].desperation;
       m.bossInvuln = I.prep + I.time + 1; m.bleed = null; m.despAct = '';
-      m.desp = { line: 0, gap: 1, card: null, last: '', act: -1, started: false, q: [], snd: 0 };
+      m.desp = { line: 0, gap: 0.6, card: null, card2: null, last: '', act: -1, started: false, q: [], snd: 0, seek: 4 };
       m.beams = [];
       Game.projectiles.length = 0;
       for (const q of Game.mobs) if (q.type === 'imp' && q.dying == null) killMob(q);   // (his imps are sacrificed)
@@ -9139,8 +9142,12 @@
       // ---- the helpers every attack uses ----
       const tid = (q) => q.isRemote ? q.id : 'host';
       const aim = (q, ox, oy) => Math.atan2(q.y + q.h / 2 - oy, q.x + q.w / 2 - ox);
-      const orbSound = () => { if (D.snd <= 0) { D.snd = 0.4; sfx('abyss.orb'); } };
+      // aimed where a RUNNING player is going to be (he leads you more as the fight goes on)
+      const aimLead = (q, ox, oy, secs) => Math.atan2(q.y + q.h / 2 - oy, q.x + q.w / 2 + (q.vx || 0) * secs * pace(0.15, 0.5) - ox);
+      const orbSound = () => { if (D.snd <= 0) { D.snd = 0.35; sfx('abyss.orb'); } };
       const orb = (x, y, vx, vy, r, life, only) => spawnProjectile({ x, y, vx, vy, kind: 'orb', r: r || 0.3, dmg: DESP_DMG.orb, solidHit: false, life: life || 6, only });
+      // an orb that CHASES a player: it turns at most `turn` rad/s for `homeT` seconds, then flies straight
+      const seeker = (q, x, y, a, sp, turn, homeT, life) => spawnProjectile({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, kind: 'seeker', r: 0.34, dmg: DESP_DMG.orb, solidHit: false, life: life || homeT + 1.8, home: { id: tid(q), t: homeT, turn } });
       // the ground under a player's feet (so a jump-wave is always knee height for THEM)
       const groundOf = (q) => { let g = Math.floor(q.y + q.h - 0.05); for (let i = 0; i < 8 && !solidAt(Math.floor(q.x + q.w / 2), g); i++) g++; return g; };
       // fires fn(i) `count` times, `gap` seconds apart. True once the last gap is over.
@@ -9149,108 +9156,132 @@
         if (c.i < count && c.next <= 0) { fn(c.i++); c.next = gap; }
         return c.i >= count && c.next <= 0;
       };
+      // the stretch of floor you can really stand on around x: lava pits and walls stop it
+      // (the Abyss arena has two lava pits, so it's only ~20 blocks wide in the middle)
+      const zoneOf = (x0) => {
+        const top = (x) => { for (let y = floor - 8; y < floor + 8; y++) if (solidAt(x, y)) return y; return floor + 8; };
+        const x = Math.floor(x0); let l = x, r = x, tl = top(x), tr = tl;
+        for (let i = x - 1; i >= left; i--) { const t = top(i); if (Math.abs(t - tl) > 1) break; l = i; tl = t; }
+        for (let i = x + 1; i <= right; i++) { const t = top(i); if (Math.abs(t - tr) > 1) break; r = i + 1; tr = t; }
+        return { l, r: Math.max(r, l + 6) };
+      };
       D.snd -= dt;
 
-      // ---- the attacks ("cards") ----
+      // ---- the attacks ("cards"). c.sub = running underneath another attack (so it doesn't move the King) ----
+      const steer = (c, x, y, sp) => { if (!c.sub) bossSteer(m, x, y, sp, dt); };
       const CARDS = {
-        // slow rotating arms from the middle: walk with the gap. They reverse once, after a pause.
+        // fast rotating arms from the middle: run with the gap. They reverse once, after a pause.
         spiral: {
-          init: (c) => { c.dir = Math.random() < 0.5 ? -1 : 1; c.a = Math.random() * 6.28; c.fire = 0; c.pause = 0; c.dur = pace(6.5, 8.5); },
+          init: (c) => { c.dir = Math.random() < 0.5 ? -1 : 1; c.a = Math.random() * 6.28; c.fire = 0; c.pause = 0; c.dur = pace(7, 9); },
           run: (c) => {
-            bossSteer(m, homeX, homeY, 4, dt);
-            if (!c.rev && c.t >= c.dur / 2) { c.rev = true; c.dir = -c.dir; c.pause = 0.8; }
-            c.a += c.dir * pace(0.3, 0.42) * dt;
+            steer(c, homeX, homeY, 4);
+            if (!c.rev && c.t >= c.dur / 2) { c.rev = true; c.dir = -c.dir; c.pause = 0.7; }
+            c.a += c.dir * pace(0.34, 0.46) * dt;
             if (c.pause > 0) c.pause -= dt;
             else if ((c.fire -= dt) <= 0) {
-              c.fire = pace(0.2, 0.15);
-              const arms = k < 0.5 ? 3 : 4, sp = pace(6.5, 8);
+              c.fire = pace(0.2, 0.16);
+              const arms = 4, sp = pace(7, 9);
               orbSound();
-              for (let i = 0; i < arms; i++) { const a = c.a + i / arms * Math.PI * 2; orb(cx, cy, Math.cos(a) * sp, Math.sin(a) * sp, 0.3, 5.5); }
+              for (let i = 0; i < arms; i++) { const a = c.a + i / arms * Math.PI * 2; orb(cx, cy, Math.cos(a) * sp, Math.sin(a) * sp, 0.3, 4.2); }
             }
             return c.t >= c.dur;
           },
         },
-        // a fan of darts at each player, aimed along a warning line: sidestep it
+        // a fan of darts at each player, along a warning line (he leads you): sidestep it
         fan: {
           init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.35 ? 4 : k < 0.7 ? 5 : 6; c.side = Math.random() < 0.5 ? -1 : 1; c.tx = homeX; c.ty = homeY; },
           run: (c) => {
-            bossSteer(m, c.tx, c.ty, 5, dt);
-            return seq(c, c.cnt, pace(1.7, 1.25), () => {
-              c.side = -c.side; c.tx = homeX + c.side * 9; c.ty = homeY + 1;
-              D.q.push({ t: 0.5, e: 'fanAim', warn: pace(0.85, 0.6) });
+            steer(c, c.tx, c.ty, 6);
+            return seq(c, c.cnt, pace(1.4, 1.0), () => {
+              c.side = -c.side; c.tx = homeX + c.side * 11; c.ty = homeY + 1;
+              D.q.push({ t: 0.4, e: 'fanAim', warn: pace(0.65, 0.5) });
             });
           },
         },
-        // big slow orbs that burst into a ring - with a hole near you
+        // big orbs that burst into a ring - with a hole near you
         giga: {
-          init: (c) => { c.i = 0; c.next = 0.5; c.cnt = k < 0.5 ? 2 : 3; },
+          init: (c) => { c.i = 0; c.next = 0.4; c.cnt = k < 0.35 ? 3 : 4; },
           run: (c) => {
-            bossSteer(m, homeX, homeY, 4, dt);
-            return seq(c, c.cnt, pace(2.5, 2.0), () => {
+            steer(c, homeX, homeY, 4);
+            return seq(c, c.cnt, pace(1.9, 1.4), () => {
               sfx('abyss.fireorb');
               for (const q of targets) {
-                const a = aim(q, cx, cy), sp = pace(5.5, 6.5);
+                const a = aimLead(q, cx, cy, 1), sp = pace(6.5, 8);
                 spawnProjectile({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, kind: 'fireorb', r: 0.75, dmg: DESP_DMG.blast, life: 4, ghostT: 0.3,
-                  burst: { n: k < 0.5 ? 18 : 22, speed: pace(5, 6.2), fuse: 1.3, hole: tid(q), side: Math.random() < 0.5 ? -1 : 1, holeOff: 3.2 } });
+                  burst: { n: k < 0.5 ? 22 : 26, speed: pace(6.5, 8), fuse: 1.1, hole: tid(q), side: Math.random() < 0.5 ? -1 : 1, holeOff: 3.4, holeHalf: pace(2.2, 1.8) } });
               }
             });
           },
         },
-        // rows of vertical beams, then the same row shifted: step sideways between them
+        // rows of vertical beams, then the row shifted: step between them
         comb: {
-          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.5 ? 3 : 4; c.o = Math.random() * 3; },
-          run: (c) => seq(c, c.cnt, pace(1.5, 1.1), (i) => {
-            const S = pace(8, 6.8), warn = pace(1.25, 0.95);
+          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.4 ? 4 : 6; c.o = Math.random() * 3; },
+          run: (c) => seq(c, c.cnt, pace(1.15, 0.85), (i) => {
+            const S = pace(7.5, 6.2), warn = pace(1.05, 0.8);
+            const o = c.o + (i % 2 ? S * (0.4 + Math.random() * 0.2) : (Math.random() - 0.5) * S * 0.3);
             let j = 0;
-            for (let x = left + 2 + c.o + (i % 2 ? S / 2 : 0); x < right - 1; x += S)
-              addBeam(m, x, ceil, Math.PI / 2, { warn, dur: 0.5, len: floor - ceil + 4, w: 0.8, quiet: j++ > 0 });
+            for (let x = left + 2 + o; x < right - 1; x += S)
+              addBeam(m, x, ceil, Math.PI / 2, { warn, dur: 0.45, len: floor - ceil + 4, w: 0.8, quiet: j++ > 0 });
           }),
         },
         // a beam that follows you, then LOCKS: move when it locks
         lance: {
-          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.4 ? 3 : 4; c.side = Math.random() < 0.5 ? -1 : 1; c.tx = homeX; c.ty = homeY; },
+          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.5 ? 4 : 5; c.side = Math.random() < 0.5 ? -1 : 1; c.tx = homeX; c.ty = homeY; },
           run: (c) => {
-            bossSteer(m, c.tx, c.ty, 5, dt);
-            return seq(c, c.cnt, pace(1.9, 1.5), () => {
+            steer(c, c.tx, c.ty, 6);
+            return seq(c, c.cnt, pace(1.5, 1.05), () => {
               c.side = -c.side; c.tx = homeX + c.side * 8; c.ty = homeY + 1;
-              D.q.push({ t: 0.55, e: 'lance', warn: pace(1.15, 0.95) });
+              D.q.push({ t: 0.4, e: 'lance', warn: pace(0.95, 0.7) });
             });
           },
         },
-        // a low orb sweeps across: JUMP it (a pair of them later on)
+        // low orbs sweep across: JUMP them (2, then 3 in a row)
         wave: {
-          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.5 ? 3 : 5; c.dir = Math.random() < 0.5 ? -1 : 1; },
+          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.4 ? 4 : 6; c.dir = Math.random() < 0.5 ? -1 : 1; },
           run: (c) => {
-            bossSteer(m, homeX, homeY, 4, dt);
-            return seq(c, c.cnt, pace(2.4, 1.9), () => {
+            steer(c, homeX, homeY, 4);
+            return seq(c, c.cnt, pace(1.9, 1.3), () => {
               c.dir = -c.dir;
-              const warn = pace(1.0, 0.8);
+              const warn = pace(0.9, 0.7);
               for (const q of targets) {
                 const y = r2(groundOf(q) - 0.45);
                 addBeam(m, left, y, 0, { ghost: true, warn, len: right - left, w: 0.15 });
-                const sp = pace(7, 8.5), pair = k >= 0.35 ? 2 : 1;
-                for (let n = 0; n < pair; n++) D.q.push({ t: warn + n * 0.8, e: 'wave', y, dir: c.dir, sp, only: tid(q) });
+                const sp = pace(7.5, 10), pair = k < 0.45 ? 2 : 3;
+                for (let n = 0; n < pair; n++) D.q.push({ t: warn + n * pace(0.95, 0.8), e: 'wave', y, dir: c.dir, sp, only: tid(q) });
               }
             });
           },
         },
         // orbs pour from the ceiling: the green lane is the safe gap
         rain: {
-          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.5 ? 3 : 5; },
+          init: (c) => { c.i = 0; c.next = 0.2; c.cnt = k < 0.4 ? 4 : 6; },
           run: (c) => {
-            bossSteer(m, homeX, homeY, 4, dt);
-            return seq(c, c.cnt, pace(2.3, 1.8), () => {
-              const warn = pace(0.9, 0.65), gh = pace(2.6, 2.1), gaps = [];
+            steer(c, homeX, homeY, 4);
+            return seq(c, c.cnt, pace(1.9, 1.35), () => {
+              const warn = pace(0.8, 0.55), gh = pace(2.5, 1.9), gaps = [];
               for (const q of targets) {
                 const qx = q.x + q.w / 2;
-                let g = qx + (Math.random() < 0.5 ? -1 : 1) * (3.4 + Math.random() * 1.6);
-                if (g < left + 4 || g > right - 4) g = qx - (g - qx);
-                g = Math.max(left + 3, Math.min(right - 3, g));
+                const z = zoneOf(qx);
+                let g = qx + (Math.random() < 0.5 ? -1 : 1) * (3.6 + Math.random() * 2);
+                if (g < z.l + 2 || g > z.r - 2) g = qx - (g - qx);   // (never over the lava: the lane has to be reachable)
+                g = Math.max(z.l + 1.5, Math.min(z.r - 1.5, g));
                 gaps.push(g);
                 addBeam(m, g, ceil, Math.PI / 2, { ghost: true, safe: true, warn, w: gh, len: floor - ceil + 4 });
               }
               D.q.push({ t: warn, e: 'rain', gaps, gh });
             });
+          },
+        },
+        // a swarm of orbs that CHASE you: they turn slowly, so run a curve and juke them
+        seekers: {
+          init: (c) => { c.i = 0; c.next = 0.3; c.cnt = k < 0.5 ? 4 : 6; },
+          run: (c) => {
+            steer(c, homeX, homeY, 4);
+            const done = seq(c, c.cnt, pace(0.4, 0.3), () => {
+              sfx('abyss.orb');
+              for (const q of targets) seeker(q, cx, cy, aim(q, cx, cy) + (Math.random() - 0.5) * 1.2, pace(6.5, 8), pace(1.8, 2.3), 3.2);
+            });
+            return done && c.t > c.cnt * 0.4 + 1.5;
           },
         },
       };
@@ -9264,23 +9295,23 @@
         if (ev.e === 'fanAim') {   // lock the aim, show the line
           const c = D.card;
           if (c) { c.tx = cx; c.ty = cy; }   // (he holds still while he aims)
-          const aims = targets.map(q => aim(q, cx, cy));
+          const aims = targets.map(q => aimLead(q, cx, cy, ev.warn));
           for (const a of aims) addBeam(m, cx, cy, a, { ghost: true, warn: ev.warn, len: 50, w: 0.15 });
           D.q.push({ t: ev.warn, e: 'fan', ox: r2(cx), oy: r2(cy), aims });
         } else if (ev.e === 'fan') {
-          const n = k < 0.5 ? 5 : 7, spread = n === 5 ? 0.24 : 0.2, sp = pace(8, 10);
+          const n = k < 0.4 ? 5 : 7, spread = n === 5 ? 0.3 : 0.25, sp = pace(9.5, 12);
           orbSound();
-          for (const a of ev.aims) for (let j = 0; j < n; j++) { const b = a + (j - (n - 1) / 2) * spread; orb(ev.ox, ev.oy, Math.cos(b) * sp, Math.sin(b) * sp, 0.28, 4); }
+          for (const a of ev.aims) for (let j = 0; j < n; j++) { const b = a + (j - (n - 1) / 2) * spread; orb(ev.ox, ev.oy, Math.cos(b) * sp, Math.sin(b) * sp, 0.28, 3.5); }
         } else if (ev.e === 'lance') {
           const c = D.card;
           if (c) { c.tx = cx; c.ty = cy; }
-          for (const q of targets) addBeam(m, cx, cy, aim(q, cx, cy), { warn: ev.warn, dur: 0.3, len: 70, w: 0.5, track: tid(q), lock: 0.4, only: tid(q) });
+          for (const q of targets) addBeam(m, cx, cy, aim(q, cx, cy), { warn: ev.warn, dur: 0.3, len: 70, w: 0.5, track: tid(q), lock: pace(0.5, 0.4), only: tid(q) });
         } else if (ev.e === 'wave') {
           const x0 = ev.dir > 0 ? left : right;
           orbSound();
           spawnProjectile({ x: x0, y: ev.y, vx: ev.dir * ev.sp, vy: 0, kind: 'orb', r: 0.3, dmg: DESP_DMG.orb, solidHit: false, life: (right - left) / ev.sp + 1, only: ev.only });
         } else if (ev.e === 'rain') {
-          const sp = pace(8.5, 10.5);
+          const sp = pace(9.5, 12.5);
           orbSound();
           for (let x = left + 0.7; x <= right; x += 1.3) {
             if (ev.gaps.some(g => Math.abs(x - g) < ev.gh)) continue;
@@ -9292,19 +9323,38 @@
       // ---- which attack is next ----
       let act = 0;
       for (let i = 0; i < DESP_ACTS.length; i++) if (F >= DESP_ACTS[i][0]) act = i;
-      if (act !== D.act) { if (D.act >= 0) { sfx('boss.roar', { pitch: 0.7 + k * 0.4 }); screenShake(0.7); D.gap = Math.max(D.gap, 2.5); } D.act = act; }
+      if (act !== D.act) { if (D.act >= 0) { sfx('boss.roar', { pitch: 0.7 + k * 0.4 }); screenShake(0.7); D.gap = Math.max(D.gap, 1.5); } D.act = act; }
       m.despAct = 'act' + (act + 1);
+      const fighting = F < I.time - 8;   // (the last few seconds: nothing new, let it fade out)
       if (D.card) {
         D.card.t += dt;
-        if (CARDS[D.card.name].run(D.card)) { D.card = null; D.gap = pace(2.6, 1.3); }
-      } else if (F < I.time - 8) {   // (the last few seconds: nothing new, let it fade out)
+        if (CARDS[D.card.name].run(D.card)) { D.card = null; D.gap = pace(1.8, 0.7); }
+      } else if (fighting) {
         D.gap -= dt;
         if (D.gap <= 0) {
           const pool = DESP_ACTS[act][1].filter(n => n !== D.last), name = pool[Math.floor(Math.random() * pool.length)];
           D.last = name; D.card = { name, t: 0 };
           CARDS[name].init(D.card);
           if (D.card.next == null) D.card.next = 0;
+          // (Acts IV and V) a second attack starts underneath
+          const seconds = DESP_SECOND[name];
+          if (seconds && !D.card2 && act >= 3 && Math.random() < (act >= 4 ? 0.65 : 0.3)) {
+            const n2 = seconds[Math.floor(Math.random() * seconds.length)];
+            D.card2 = { name: n2, t: 0, sub: true };
+            CARDS[n2].init(D.card2);
+            D.card2.next = (D.card2.next || 0) + 0.9;
+          }
         }
+      }
+      if (D.card2) {
+        D.card2.t += dt;
+        if (CARDS[D.card2.name].run(D.card2)) D.card2 = null;
+      }
+      // the layer: from Act II one seeker is always on your tail
+      if (act >= 1 && fighting && (D.seek -= dt) <= 0) {
+        D.seek = pace(4.6, 3.0);
+        for (const q of targets) seeker(q, cx, cy, aim(q, cx, cy), pace(6, 7.5), pace(1.6, 2.1), 3, 4.8);
+        sfx('abyss.orb');
       }
       updateBeams(m, dt);
       if (F >= I.time) {   // worn out
@@ -9535,7 +9585,7 @@
         const q = B.hole && bossPlayers().find(z => (z.isRemote ? z.id : 'host') === B.hole);
         if (q) {
           const hx = q.x + q.w / 2 + B.side * B.holeOff, hy = q.y + q.h / 2;
-          hole = Math.atan2(hy - pr.y, hx - pr.x); half = Math.max(0.16, Math.min(0.6, Math.atan2(2.0, Math.max(3, Math.hypot(hx - pr.x, hy - pr.y)))));
+          hole = Math.atan2(hy - pr.y, hx - pr.x); half = Math.max(0.16, Math.min(0.6, Math.atan2(B.holeHalf || 2.0, Math.max(3, Math.hypot(hx - pr.x, hy - pr.y)))));
           off = hole;   // (an orb sits right on the hole's middle, so the gap is symmetric)
         }
         for (let i = 0; i < n; i++) {
@@ -9577,8 +9627,16 @@
         pr.age += dt;
         if (pr.age > pr.life) { Game.projectiles.splice(i, 1); continue; }
         if (pr.kind === 'meteor') pr.vy = Math.min(26, pr.vy + 14 * dt);
+        if (pr.home && !cosmetic && pr.age < pr.home.t) {   // (1.0.4) a seeker turns toward its player, but only so fast: juke it
+          const q = bossPlayers().find(z => (z.isRemote ? z.id : 'host') === pr.home.id);
+          if (q) {
+            const sp = Math.hypot(pr.vx, pr.vy), cur = Math.atan2(pr.vy, pr.vx), want = Math.atan2(q.y + q.h / 2 - pr.y, q.x + q.w / 2 - pr.x);
+            const d = ((want - cur) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI, na = cur + Math.max(-pr.home.turn * dt, Math.min(pr.home.turn * dt, d));
+            pr.vx = Math.cos(na) * sp; pr.vy = Math.sin(na) * sp;
+          }
+        }
         pr.x += pr.vx * dt; pr.y += pr.vy * dt;
-        if (pr.kind !== 'orb' && Math.random() < dt * 40 * particleMul()) spawnFlame(pr.x + (Math.random() - 0.5) * pr.r, pr.y + (Math.random() - 0.5) * pr.r);
+        if (pr.kind !== 'orb' && pr.kind !== 'seeker' && Math.random() < dt * 40 * particleMul()) spawnFlame(pr.x + (Math.random() - 0.5) * pr.r, pr.y + (Math.random() - 0.5) * pr.r);
         if (cosmetic) continue;
         if (pr.burst && (pr.age >= pr.burst.fuse || (!(pr.ghostT > 0) && solidAt(Math.floor(pr.x), Math.floor(pr.y))))) {
           projectileBurst(pr); Game.projectiles.splice(i, 1); continue;
@@ -9714,6 +9772,10 @@
       for (const pr of Game.projectiles) {
         const x = originX + pr.x * TILE, y = originY + pr.y * TILE, r = pr.r * TILE;
         if (pr.kind === 'orb') { glow(x, y, r * 3, '255,40,110', 0.55); glow(x, y, r * 1.1, '255,200,230', 0.95); }
+        else if (pr.kind === 'seeker') {   // (1.0.4) the chasing orbs: bright cyan-white while they chase (pink once they stop), so you can tell them from the rest
+          const homing = !pr.home || pr.age < pr.home.t || pr.home.t == null;
+          glow(x, y, r * 4.5, homing ? '60,230,255' : '255,60,140', 0.8); glow(x, y, r * 1.6, '235,255,255', 1);
+        }
         else { glow(x, y, r * 3.2, '255,110,20', 0.6); glow(x, y, r * 1.2, '255,245,190', 0.95); }
       }
       const m = Game.boss;
