@@ -41,59 +41,59 @@ BALANCE
   - Tonio's Musket: 45 damage per shot (was 22), and reloads in 1.7 s (was 2.1).
 
 
-KING OF THE ABYSS: DESPERATION PHASE (new)
-------------------------------------------
-  Inspired by Calamity's Supreme Calamitas bullet hells. When he drops to 12%
-  health he can't be hurt (no single hit can skip it), sacrifices his imps, and
-  fights for his life for TWO MINUTES. The boss bar counts down ("survive 1:43").
+KING OF THE ABYSS: DESPERATION PHASE (new, rebuilt)
+---------------------------------------------------
+  Inspired by the Desperation phase in Calamity / Infernum (Supreme Calamitas), but a
+  lot gentler: he's the first boss.
 
-  How it's built:
-    - FAST orbs (11 blocks a second at the start, 16+ at the end; you sprint at
-      8.6) in STRUCTURED patterns: walls, rain, fans and rings. No random spam.
-    - EVERY wave leaves a way through. In multiplayer EVERY player gets their own
-      gap, 2.4-4.2 blocks to one side of them: never where you're standing (you
-      have to move), always close enough to reach in time.
-    - Starts slow, ends frantic. Near the end the patterns come one at a time,
-      faster and faster, instead of piling on top of each other.
-    - Walls are warned with white lines first, so you can read the gap.
+  When he drops to 1% health he can't be hurt (no single hit can skip it), sacrifices
+  his imps and floats to the middle of his arena.
 
-     0:00-0:18  HELLFIRE VOLLEYS   Fans of 5 fast orbs at each player, plus
-                                   Gigablasts: big fireballs that burst into a
-                                   ring of orbs.
-     0:18-0:36  BRIMSTONE RAIN     Columns of orbs pour from the ceiling with a
-                                   gap near you: get under it.
-     0:36-0:54  THE WALLS          Walls of orbs sweep in from the sides. The white
-                                   lines show the gap: one low line = JUMP it,
-                                   no low lines = STAY DOWN.
-     0:54-1:12  EVENT HORIZON      Black hole: he sinks to the floor and pulls
-                                   harder than you can walk (SPRINT against it),
-                                   his purple void hurts a LOT, and fast rings of
-                                   orbs come with a gap near each player.
-     1:12-1:30  CROSSFIRE          Walls, rain and volleys take turns, plus beams
-                                   aimed at you (warned first).
-     1:30-1:54  LAST BREATH        Every pattern in turn, as fast as it gets.
-     1:54-2:00  ...silence...      He runs out of strength.
+    0:00-0:10  GET READY      Nothing is thrown at you. Reposition. His old song fades
+                              out. (The boss bar counts down.)
+    0:10       NEW SONG       The Desperation song starts and he fights for 2:30
+                              ("survive 2:30" on the boss bar).
+
+  How it works: ONE attack at a time. Every attack has a warning you can read, a way
+  through that is wider than you are, and a breather after it. No random spam.
+
+    SPIRAL      slow rotating arms of orbs: walk with the gap. They reverse once
+                (after a short pause).
+    FAN         a white line shows where his darts are aimed: sidestep it.
+    GIGABLAST   a big slow orb that bursts into a ring of orbs, with a hole near you.
+    BEAM COMB   vertical beams, shaded with their TRUE width. Then the same row
+                shifted over: step between them.
+    LANCE       a beam that follows you, then LOCKS: move when it locks.
+    WAVE        one low orb sweeps the arena along a white line: JUMP it (later,
+                two in a row).
+    RAIN        orbs fall from the ceiling: the GREEN lane is the safe gap.
+
+  It builds over five acts (the attacks get a little faster, the breathers shorter):
+     0:00 Act I     spiral, fan, rain
+     0:28 Act II    + gigablast, beam comb
+     0:58 Act III   + wave, lance
+     1:32 Act IV    everything, faster
+     2:05 Finale    everything, as fast as it gets
+  Nothing is faster than you can sprint. In multiplayer every player gets their own
+  aim line, gap and jump line.
 
   Survive it and he's EXHAUSTED: he sinks to the floor, his melee armour is gone,
-  and every hit does 1.5x damage until he dies.
+  and every hit does 1.5x damage (at 1% health that's one hit).
 
-  Testing: a player who reads the rain and the walls took 0 damage from them;
-  standing still gets you hit over and over.
-
-  New sounds (Sounds/boss/): beam, purple orb fire, fire orb (Gigablast) fire,
-  orb impact (Gigablast bursting).
+  New sounds: beam, purple orb fire, fire orb (Gigablast) fire, orb impact (Gigablast
+  bursting) in Sounds/boss/. New song: Sounds/music/desperation_BGM.mp3.
 
   DAMAGE: armour takes a flat amount off every hit (Abyssal Armor: 10).
     - Every hit the King lands does 60% more (his normal attacks too).
-    - Desperation: orb 16, Gigablast 22, beam 22, the void 24.
-      In Abyssal Armor: 6, 12, 12, 14 per hit, out of 26 health.
+    - Desperation: orb 13, Gigablast 18, beam 19.
+      In Abyssal Armor: 3, 8, 9 per hit, out of 26 health.
 
   To tune it (index.html):
-    BOSSES > abyssking > desperation: { at: 0.12, time: 120, exhaustedMult: 1.5 }
+    BOSSES > abyssking > desperation: { at: 0.01, prep: 10, time: 150, exhaustedMult: 1.5 }
     BOSSES > abyssking > dmgMult: 1.6
-    DESP_DMG = { orb: 10, beam: 14, voidTouch: 15, blast: 14 }  (before the x1.6)
-    DESP_ACTS (when each act starts), and in kingDesperation each pattern's
-    pace(slow, fast) numbers (its speed and how often it fires, start -> end).
+    DESP_DMG = { orb: 8, beam: 12, blast: 11 }  (before the x1.6)
+    DESP_ACTS (which attacks each act picks from), and in kingDesperation each
+    attack's pace(slow, fast) numbers (its speed and how often it fires, start -> end).
 
 
 BEDS SET YOUR SPAWN POINT
